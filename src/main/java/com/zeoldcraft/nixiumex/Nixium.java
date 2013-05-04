@@ -12,6 +12,7 @@ import java.util.Set;
 import org.bukkit.FireworkEffect;
 
 import com.laytonsmith.PureUtilities.StringUtils;
+import com.laytonsmith.PureUtilities.Version;
 import com.laytonsmith.abstraction.MCColor;
 import com.laytonsmith.abstraction.MCCommandSender;
 import com.laytonsmith.abstraction.MCLocation;
@@ -28,6 +29,7 @@ import com.laytonsmith.core.CHVersion;
 import com.laytonsmith.core.ObjectGenerator;
 import com.laytonsmith.core.Static;
 import com.laytonsmith.core.constructs.CArray;
+import com.laytonsmith.core.constructs.CBoolean;
 import com.laytonsmith.core.constructs.CInt;
 import com.laytonsmith.core.constructs.CString;
 import com.laytonsmith.core.constructs.CVoid;
@@ -35,19 +37,28 @@ import com.laytonsmith.core.constructs.Construct;
 import com.laytonsmith.core.constructs.Target;
 import com.laytonsmith.core.environments.CommandHelperEnvironment;
 import com.laytonsmith.core.environments.Environment;
+import com.laytonsmith.core.events.AbstractEvent;
+import com.laytonsmith.core.events.BindableEvent;
+import com.laytonsmith.core.events.Driver;
 import com.laytonsmith.core.exceptions.ConfigRuntimeException;
+import com.laytonsmith.core.exceptions.EventException;
+import com.laytonsmith.core.exceptions.PrefilterNonMatchException;
 import com.laytonsmith.core.functions.AbstractFunction;
 import com.laytonsmith.core.functions.Exceptions;
 import com.laytonsmith.core.functions.FunctionBase;
 import com.laytonsmith.core.functions.FunctionList;
 import com.laytonsmith.core.functions.Exceptions.ExceptionType;
 
-public class NixFunx {
+public class Nixium {
 
     private static FireworkEffectPlayer player;
     
     static {
     	player = new FireworkEffectPlayer();
+    }
+    
+    public static String docs() {
+    	return "Special stuff made for the Nixium servers.";
     }
     
 	public static abstract class NFunction extends AbstractFunction {
@@ -61,6 +72,21 @@ public class NixFunx {
 		}
 
 		public CHVersion since() {
+			return CHVersion.V3_3_1;
+		}
+	}
+	
+	public static abstract class NEvent extends AbstractEvent {
+
+		public BindableEvent convert(CArray manualObject) {
+			throw new ConfigRuntimeException("Operation not supported", Target.UNKNOWN);
+		}
+
+		public Driver driver() {
+			return Driver.EXTENSION;
+		}
+
+		public Version since() {
 			return CHVersion.V3_3_1;
 		}
 	}
@@ -337,6 +363,56 @@ public class NixFunx {
 			return "array {} Returns an associative array of all loaded functions. The keys of this array are the"
 					+ " names of the classes containing the functions (which you know as the sections of the API page),"
 					+ " and the values are arrays of the names of the functions within those classes.";
+		}
+	}
+	
+	@api
+	public static class buycraft_command extends NEvent {
+
+		public String getName() {
+			return "buycraft_command";
+		}
+
+		public String docs() {
+			return "{}"
+					+ " Fires when Buycraft tries to run a command triggered by a purchase or expiry"
+					+ " {username: the name used to make the buycraft purchase | command | willrun}"
+					+ " {command: The command to run | willrun: Whether the command will run when this is over}"
+					+ " {}";
+		}
+
+		public boolean matches(Map<String, Construct> prefilter, BindableEvent e) throws PrefilterNonMatchException {
+			if (e instanceof CHBuycraftEvent) {
+				return true;
+			}
+			return false;
+		}
+
+		public Map<String, Construct> evaluate(BindableEvent e) throws EventException {
+			if (e instanceof CHBuycraftEvent) {
+				CHBuycraftEvent event = (CHBuycraftEvent) e;
+				Target t = Target.UNKNOWN;
+				Map<String, Construct> ret = evaluate_helper(e);
+				ret.put("username", new CString(event.getUsername(), t));
+				ret.put("command", new CString(event.getCommand(), t));
+				ret.put("willrun", new CBoolean(event.getWillRun(), t));
+				return ret;
+			} else {
+				throw new EventException("Event didn't work dammit.");
+			}
+		}
+
+		public boolean modifyEvent(String key, Construct value, BindableEvent event) {
+			if (event instanceof CHBuycraftEvent) {
+				CHBuycraftEvent e = (CHBuycraftEvent) event;
+				if (key.equals("command")) {
+					e.setCommand(value.val());
+				}
+				if (key.equals("willrun")) {
+					e.setWillRun(Static.getBoolean(value));
+				}
+			}
+			return false;
 		}
 	}
 }

@@ -33,6 +33,13 @@
 			<artifactId>craftbukkit</artifactId>
 			<version>1.5.1-R0.2</version>
 		</dependency>
+		<dependency>
+			<groupId>net.buycraft</groupId>
+			<artifactId>Buycraft</artifactId>
+			<version>5.3</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/Buycraft.jar</systemPath>
+		</dependency>
 	</dependencies>
   <build>
     <sourceDirectory>src</sourceDirectory>
