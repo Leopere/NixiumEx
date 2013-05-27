@@ -1,6 +1,8 @@
 package com.zeoldcraft.nixiumex;
  
 import java.lang.reflect.Field;
+
+import org.bukkit.Bukkit;
  
 public class ReflectionUtilities {
  
@@ -32,5 +34,16 @@ public class ReflectionUtilities {
         field.setAccessible(true);
         return field.get(instance);
     }
- 
+    
+    public static String getVersionName() {
+    	return Bukkit.getServer().getClass().getPackage().getName().replace(".", ",").split(",")[3];
+    }
+
+    public static String getNMSPackage() {
+        return "net.minecraft.server." + getVersionName();
+    }
+    
+    public static String getOBCPackage() {
+    	return "org.bukkit.craftbukkit." + getVersionName();
+    }
 }

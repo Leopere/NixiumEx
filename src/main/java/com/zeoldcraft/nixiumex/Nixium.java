@@ -1,6 +1,7 @@
 package com.zeoldcraft.nixiumex;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,6 +11,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.FireworkEffect;
+import org.bukkit.Server;
+import org.bukkit.command.Command;
+import org.bukkit.command.SimpleCommandMap;
+import org.bukkit.event.Listener;
 
 import com.laytonsmith.PureUtilities.StringUtils;
 import com.laytonsmith.PureUtilities.Version;
@@ -21,16 +26,19 @@ import com.laytonsmith.abstraction.StaticLayer;
 import com.laytonsmith.abstraction.bukkit.BukkitMCColor;
 import com.laytonsmith.abstraction.bukkit.BukkitMCLocation;
 import com.laytonsmith.abstraction.bukkit.BukkitMCPlayer;
+import com.laytonsmith.abstraction.bukkit.BukkitMCServer;
 import com.laytonsmith.abstraction.bukkit.BukkitMCWorld;
 import com.laytonsmith.abstraction.enums.MCFireworkType;
 import com.laytonsmith.abstraction.enums.bukkit.BukkitMCFireworkType;
 import com.laytonsmith.annotations.api;
 import com.laytonsmith.core.CHVersion;
 import com.laytonsmith.core.ObjectGenerator;
+import com.laytonsmith.core.Security;
 import com.laytonsmith.core.Static;
 import com.laytonsmith.core.constructs.CArray;
 import com.laytonsmith.core.constructs.CBoolean;
 import com.laytonsmith.core.constructs.CInt;
+import com.laytonsmith.core.constructs.CNull;
 import com.laytonsmith.core.constructs.CString;
 import com.laytonsmith.core.constructs.CVoid;
 import com.laytonsmith.core.constructs.Construct;
@@ -49,7 +57,7 @@ import com.laytonsmith.core.functions.FunctionBase;
 import com.laytonsmith.core.functions.FunctionList;
 import com.laytonsmith.core.functions.Exceptions.ExceptionType;
 
-public class Nixium {
+public class Nixium implements Listener {
 
     private static FireworkEffectPlayer player;
     
@@ -235,7 +243,8 @@ public class Nixium {
 		public Construct exec(Target t, Environment environment,
 				Construct... args) throws ConfigRuntimeException {
 			List<MCPlayer> pl = new ArrayList<MCPlayer>();
-			ParticleEffects part;
+			ParticleEffect part;
+			int amount = 1;
 			MCLocation loc = ObjectGenerator.GetGenerator().location(args[1], null, t);
 			float speed = 0;
 			if (args[0] instanceof CArray) {
@@ -246,19 +255,22 @@ public class Nixium {
 				pl.add(Static.GetPlayer(args[0], t));
 			}
 			try {
-				part = ParticleEffects.valueOf(args[2].val().toUpperCase());
+				part = ParticleEffect.valueOf(args[2].val().toUpperCase());
 			} catch (IllegalArgumentException iae) {
 				throw new ConfigRuntimeException("Particle should be one of "
-					+ StringUtils.Join(ParticleEffects.values(), ", ", ", or "),
+					+ StringUtils.Join(ParticleEffect.values(), ", ", ", or "),
 					ExceptionType.FormatException, t);
 			}
-			if (args.length == 4) {
-				speed = Static.getDouble32(args[3], t);
+			if (args.length >= 4) {
+				amount = Static.getInt32(args[3], t);
+			}
+			if (args.length == 5) {
+				speed = Static.getDouble32(args[4], t);
 			}
 			for (MCPlayer p : pl) {
 				try {
-					part.sendToPlayer(((BukkitMCPlayer) p)._Player(),
-							((BukkitMCLocation)loc)._Location(), 0, 0, 0, speed, 1);
+					ParticleEffect.sendToPlayer(part, ((BukkitMCPlayer) p)._Player(),
+							((BukkitMCLocation)loc)._Location(), 0, 0, 0, speed, amount);
 				} catch (Exception e) {
 					throw new ConfigRuntimeException(e.getMessage(), ExceptionType.PluginInternalException, t);
 				}
@@ -271,12 +283,65 @@ public class Nixium {
 		}
 
 		public Integer[] numArgs() {
-			return new Integer[]{3, 4};
+			return new Integer[]{3, 4, 5};
 		}
 
 		public String docs() {
-			return "void {players, location, particle} Particle should be one of "
-					+ StringUtils.Join(ParticleEffects.values(), ", ", ", or ");
+			return "void {players, location, particle, [amount], [speed]} Particle should be one of "
+					+ StringUtils.Join(ParticleEffect.values(), ", ", ", or ");
+		}
+	}
+	
+	@api
+	public static class send_crack extends NFunction {
+
+		public ExceptionType[] thrown() {
+			return new ExceptionType[]{ExceptionType.PluginInternalException, ExceptionType.CastException,
+					ExceptionType.FormatException, ExceptionType.PlayerOfflineException};
+		}
+
+		public Construct exec(Target t, Environment environment,
+				Construct... args) throws ConfigRuntimeException {
+			List<MCPlayer> pl = new ArrayList<MCPlayer>();
+			MCLocation loc = ObjectGenerator.GetGenerator().location(args[1], null, t);
+			int type = Static.getInt32(args[2], t);
+			byte data = Static.getInt8(args[3], t);
+			int amount = 1;
+			boolean icon = true;
+			if (args[0] instanceof CArray) {
+				for (String k : ((CArray) args[0]).keySet()) {
+					pl.add(Static.GetPlayer(((CArray) args[0]).get(k, t), t));
+				}
+			} else {
+				pl.add(Static.GetPlayer(args[0], t));
+			}
+			if (args.length >= 5) {
+				amount = Static.getInt32(args[4], t);
+			}
+			if (args.length == 6) {
+				icon = Static.getBoolean(args[5]);
+			}
+			for (MCPlayer p : pl) {
+				try {
+					ParticleEffect.sendCrackToPlayer(icon, type, data, ((BukkitMCPlayer) p)._Player(),
+							((BukkitMCLocation)loc)._Location(), 0, 0, 0, amount);
+				} catch (Exception e) {
+					throw new ConfigRuntimeException(e.getMessage(), ExceptionType.PluginInternalException, t);
+				}
+			}
+			return null;
+		}
+
+		public String getName() {
+			return "send_crack";
+		}
+
+		public Integer[] numArgs() {
+			return new Integer[]{4, 5, 6};
+		}
+
+		public String docs() {
+			return "void {players, location, type, data, [amount], [icon]} I don't know what this does. Icon is boolean.";
 		}
 	}
 	
@@ -284,13 +349,18 @@ public class Nixium {
 	public static class write extends NFunction {
 
 		public ExceptionType[] thrown() {
-			return new ExceptionType[]{ExceptionType.IOException};
+			return new ExceptionType[]{ExceptionType.IOException, ExceptionType.SecurityException};
 		}
 
-		public Construct exec(Target t, Environment environment,
-				Construct... args) throws ConfigRuntimeException {
+		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
+			String location = args[0].val();
+			location = new File(t.file().getParentFile(), location).getAbsolutePath();
+			if (!Security.CheckSecurity(location)) {
+				throw new ConfigRuntimeException("You do not have permission to access the file '" + location + "'",
+					Exceptions.ExceptionType.SecurityException, t);
+			}
 			try{// Create file
-				FileWriter fstream = new FileWriter(args[0].val());
+				FileWriter fstream = new FileWriter(location);
 				BufferedWriter out = new BufferedWriter(fstream);
 				out.write(args[1].val());
 				//Close the output stream
@@ -310,59 +380,108 @@ public class Nixium {
 		}
 
 		public String docs() {
-			return "void {file, contents} Writes contents to file. What the hell else would it do?"
-					+ " In seriousness, the base directory for this is the server directory.";
-		}
-	}
-	
-	private static Map<String,List<String>> funcs = new HashMap<String,List<String>>();
-	
-	private static void initf() {
-		for (FunctionBase f : FunctionList.getFunctionList(api.Platforms.INTERPRETER_JAVA)) {
-			String[] pack = f.getClass().getEnclosingClass().getName().split("\\.");
-			String clazz = pack[pack.length - 1];
-			if (!funcs.containsKey(clazz)) {
-				funcs.put(clazz, new ArrayList<String>());
-			}
-			funcs.get(clazz).add(f.getName());
+			return "void {file, contents} Writes contents to the file relative to the script.";
 		}
 	}
 	
 	@api
-	public static class get_functions extends NFunction {
+	public static class file_exists extends NFunction {
+
+		public Construct exec(Target t, Environment env, Construct... args) throws ConfigRuntimeException {
+			String location = args[0].val();
+			File file = new File(t.file().getParentFile(), location);
+			return new CBoolean(file.exists(), t);
+		}
 
 		public ExceptionType[] thrown() {
 			return new ExceptionType[]{};
 		}
 
-		public Construct exec(Target t, Environment environment,
-				Construct... args) throws ConfigRuntimeException {
-			CArray ret = CArray.GetAssociativeArray(t);
-			if (funcs.keySet().size() < 10) {
-				initf();
+		public String docs() {
+			return "boolean {file} Returns whether the given file exists, relative to the script.";
+		}
+
+		public String getName() {
+			return "file_exists";
+		}
+
+		public Integer[] numArgs() {
+			return new Integer[]{1};
+		}
+	}
+	
+	@api
+	public static class is_directory extends NFunction {
+
+		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
+			String location = args[0].val();
+			File file = new File(t.file().getParentFile(), location);
+			location = file.getAbsolutePath();
+			if (!Security.CheckSecurity(location)) {
+				throw new ConfigRuntimeException("You do not have permission to access the file '" + location + "'",
+					Exceptions.ExceptionType.SecurityException, t);
 			}
-			for (String cname : funcs.keySet()) {
-				CArray fnames = new CArray(t);
-				for (String fname : funcs.get(cname)) {
-					fnames.push(new CString(fname, t));
-				}
-				ret.set(new CString(cname, t), fnames, t);
+			if (!file.exists()) {
+				throw new ConfigRuntimeException("The specified file does not exist.", ExceptionType.IOException, t);
+			}
+			return new CBoolean(file.isDirectory(), t);
+		}
+
+		public ExceptionType[] thrown() {
+			return new ExceptionType[]{ExceptionType.IOException, ExceptionType.SecurityException};
+		}
+
+		public String docs() {
+			return "boolean {file} Returns whether the given file relative to the script is a directory or not.";
+		}
+
+		public String getName() {
+			return "is_directory";
+		}
+
+		public Integer[] numArgs() {
+			return new Integer[]{1};
+		}
+	}
+	
+	@api
+	public static class directory_contents extends NFunction {
+
+		public Construct exec(Target t, Environment env, Construct... args) throws ConfigRuntimeException {
+			String location = args[0].val();
+			File file = new File(t.file().getParentFile(), location);
+			location = file.getAbsolutePath();
+			if (!Security.CheckSecurity(location)) {
+				throw new ConfigRuntimeException("You do not have permission to access the file '" + location + "'",
+					Exceptions.ExceptionType.SecurityException, t);
+			}
+			if (!file.exists()) {
+				throw new ConfigRuntimeException("The file at "+location+" does not exist.", ExceptionType.IOException, t);
+			}
+			if (!file.isDirectory()) {
+				throw new ConfigRuntimeException("The file at "+location+" is not a directory", ExceptionType.IOException, t);
+			}
+			CArray ret = new CArray(t);
+			for (String path : file.list()) {
+				ret.push(new CString(path, t));
 			}
 			return ret;
 		}
 
-		public String getName() {
-			return "get_functions";
-		}
-
-		public Integer[] numArgs() {
-			return new Integer[]{0};
+		public ExceptionType[] thrown() {
+			return new ExceptionType[]{ExceptionType.SecurityException, ExceptionType.IOException};
 		}
 
 		public String docs() {
-			return "array {} Returns an associative array of all loaded functions. The keys of this array are the"
-					+ " names of the classes containing the functions (which you know as the sections of the API page),"
-					+ " and the values are arrays of the names of the functions within those classes.";
+			return "array {directory} Returns an array of the filenames inside a given directory relative to the script.";
+		}
+
+		public String getName() {
+			return "directory_contents";
+		}
+
+		public Integer[] numArgs() {
+			return new Integer[]{1};
 		}
 	}
 	
