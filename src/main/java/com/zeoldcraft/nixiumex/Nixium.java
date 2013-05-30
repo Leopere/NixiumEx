@@ -4,16 +4,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.FireworkEffect;
-import org.bukkit.Server;
-import org.bukkit.command.Command;
-import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.event.Listener;
 
 import com.laytonsmith.PureUtilities.StringUtils;
@@ -26,7 +22,6 @@ import com.laytonsmith.abstraction.StaticLayer;
 import com.laytonsmith.abstraction.bukkit.BukkitMCColor;
 import com.laytonsmith.abstraction.bukkit.BukkitMCLocation;
 import com.laytonsmith.abstraction.bukkit.BukkitMCPlayer;
-import com.laytonsmith.abstraction.bukkit.BukkitMCServer;
 import com.laytonsmith.abstraction.bukkit.BukkitMCWorld;
 import com.laytonsmith.abstraction.enums.MCFireworkType;
 import com.laytonsmith.abstraction.enums.bukkit.BukkitMCFireworkType;
@@ -38,7 +33,6 @@ import com.laytonsmith.core.Static;
 import com.laytonsmith.core.constructs.CArray;
 import com.laytonsmith.core.constructs.CBoolean;
 import com.laytonsmith.core.constructs.CInt;
-import com.laytonsmith.core.constructs.CNull;
 import com.laytonsmith.core.constructs.CString;
 import com.laytonsmith.core.constructs.CVoid;
 import com.laytonsmith.core.constructs.Construct;
@@ -53,8 +47,6 @@ import com.laytonsmith.core.exceptions.EventException;
 import com.laytonsmith.core.exceptions.PrefilterNonMatchException;
 import com.laytonsmith.core.functions.AbstractFunction;
 import com.laytonsmith.core.functions.Exceptions;
-import com.laytonsmith.core.functions.FunctionBase;
-import com.laytonsmith.core.functions.FunctionList;
 import com.laytonsmith.core.functions.Exceptions.ExceptionType;
 
 public class Nixium implements Listener {
