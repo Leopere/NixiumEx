@@ -346,7 +346,11 @@ public class Nixium implements Listener {
 
 		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
 			String location = args[0].val();
-			location = new File(t.file().getParentFile(), location).getAbsolutePath();
+			boolean fixed = false;
+			if (args.length == 3) {
+				fixed = Static.getBoolean(args[2]);
+			}
+			location = fixed ? new File(location).getAbsolutePath() : new File(t.file().getParentFile(), location).getAbsolutePath();
 			if (!Security.CheckSecurity(location)) {
 				throw new ConfigRuntimeException("You do not have permission to access the file '" + location + "'",
 					Exceptions.ExceptionType.SecurityException, t);
@@ -368,11 +372,12 @@ public class Nixium implements Listener {
 		}
 
 		public Integer[] numArgs() {
-			return new Integer[]{2};
+			return new Integer[]{2, 3};
 		}
 
 		public String docs() {
-			return "void {file, contents} Writes contents to the file relative to the script.";
+			return "void {file, contents, [useServerDir]} Writes contents to the file relative to the script."
+					+ " If useServerDir is true, the path will be relative to the server jar instead of the script.";
 		}
 	}
 	
