@@ -79,7 +79,7 @@ public class Nixium implements Listener {
 	public static abstract class NEvent extends AbstractEvent {
 
 		public BindableEvent convert(CArray manualObject) {
-			throw new ConfigRuntimeException("Operation not supported", Target.UNKNOWN);
+			throw new ConfigRuntimeException("Operation not supported", ExceptionType.BindException, Target.UNKNOWN);
 		}
 
 		public Driver driver() {
