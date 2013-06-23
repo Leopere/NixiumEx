@@ -1,17 +1,18 @@
 package com.zeoldcraft.nixiumex;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 
 import org.bukkit.FireworkEffect;
 import org.bukkit.event.Listener;
 
+import com.laytonsmith.PureUtilities.CommandExecutor;
+import com.laytonsmith.PureUtilities.FileUtility;
 import com.laytonsmith.PureUtilities.StringUtils;
 import com.laytonsmith.PureUtilities.Version;
 import com.laytonsmith.abstraction.MCColor;
@@ -48,6 +49,7 @@ import com.laytonsmith.core.exceptions.PrefilterNonMatchException;
 import com.laytonsmith.core.functions.AbstractFunction;
 import com.laytonsmith.core.functions.Exceptions;
 import com.laytonsmith.core.functions.Exceptions.ExceptionType;
+import com.laytonsmith.core.functions.FileHandling.read;
 
 public class Nixium implements Listener {
 
@@ -338,6 +340,49 @@ public class Nixium implements Listener {
 	}
 	
 	@api
+	public static class static_read extends NFunction {
+
+		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
+			String location = args[0].val();
+			location = new File(location).getAbsolutePath();
+			//Verify this file is not above the craftbukkit directory (or whatever directory the user specified
+			if (!Security.CheckSecurity(location)) {
+				throw new ConfigRuntimeException("You do not have permission to access the file '" + location + "'",
+					Exceptions.ExceptionType.SecurityException, t);
+			}
+			try {
+				String s = read.file_get_contents(location);
+				s = s.replaceAll("\n|\r\n", "\n");
+				return new CString(s, t);
+			} catch (Exception ex) {
+				Static.getLogger().log(Level.SEVERE, "Could not read in file while attempting to find " + new File(location).getAbsolutePath()
+					+ "\nFile " + (new File(location).exists() ? "exists" : "does not exist"));
+				throw new ConfigRuntimeException("File could not be read in.",
+					Exceptions.ExceptionType.IOException, t);
+			}
+		}
+
+		public String getName() {
+			return "static_read";
+		}
+
+		public Integer[] numArgs() {
+			return new Integer[]{1};
+		}
+
+		public String docs() {
+			return "string {file} Reads in a file from the file system at location var1 and returns it as a string. The path is relative to"
+				+ " the file that is being run, not CommandHelper. If the file is not found, or otherwise can't be read in, an IOException is thrown."
+				+ " If the file specified is not within base-dir (as specified in the preferences file), a SecurityException is thrown."
+				+ " The line endings for the string returned will always be \\n, even if they originally were \\r\\n.";
+		}
+
+		public Exceptions.ExceptionType[] thrown() {
+			return new Exceptions.ExceptionType[]{Exceptions.ExceptionType.IOException, Exceptions.ExceptionType.SecurityException};
+		}
+	}
+	
+	@api
 	public static class write extends NFunction {
 
 		public ExceptionType[] thrown() {
@@ -346,21 +391,24 @@ public class Nixium implements Listener {
 
 		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
 			String location = args[0].val();
+			int mode = FileUtility.OVERWRITE;
 			boolean fixed = false;
-			if (args.length == 3) {
+			if (args.length >= 3) {
 				fixed = Static.getBoolean(args[2]);
 			}
-			location = fixed ? new File(location).getAbsolutePath() : new File(t.file().getParentFile(), location).getAbsolutePath();
+			if (args.length == 4) {
+				if (Static.getBoolean(args[3])) {
+					mode = FileUtility.APPEND;
+				}
+			}
+			File file = fixed ? new File(location) : new File(t.file().getParentFile(), location);
+			location = file.getAbsolutePath();
 			if (!Security.CheckSecurity(location)) {
 				throw new ConfigRuntimeException("You do not have permission to access the file '" + location + "'",
 					Exceptions.ExceptionType.SecurityException, t);
 			}
-			try{// Create file
-				FileWriter fstream = new FileWriter(location);
-				BufferedWriter out = new BufferedWriter(fstream);
-				out.write(args[1].val());
-				//Close the output stream
-				out.close();
+			try{
+				FileUtility.write(args[1].val(), file, mode, true);
 			}catch (Exception e){//Catch exception if any
 				throw new ConfigRuntimeException("Could not write to the file.", ExceptionType.IOException, t);
 			}
@@ -372,12 +420,14 @@ public class Nixium implements Listener {
 		}
 
 		public Integer[] numArgs() {
-			return new Integer[]{2, 3};
+			return new Integer[]{2, 3, 4};
 		}
 
 		public String docs() {
-			return "void {file, contents, [useServerDir]} Writes contents to the file relative to the script."
-					+ " If useServerDir is true, the path will be relative to the server jar instead of the script.";
+			return "void {file, contents, [useServerDir], [append]} Writes contents to the file relative to the script."
+					+ " If useServerDir is true, the path will be relative to the server jar instead of the script."
+					+ " If append is true, the file will be appended to rather than overwritten."
+					+ " useServerDir and append default to false.";
 		}
 	}
 	
@@ -479,6 +529,36 @@ public class Nixium implements Listener {
 
 		public Integer[] numArgs() {
 			return new Integer[]{1};
+		}
+	}
+	
+	@api
+	public static class shell_cmd extends NFunction {
+
+		public ExceptionType[] thrown() {
+			return new ExceptionType[]{ExceptionType.IOException};
+		}
+
+		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
+			try {
+				return new CString(CommandExecutor.Execute(args[0].val()), t);
+			} catch (Exception ex) {
+				throw new ConfigRuntimeException("Command could not be executed: " + ex.getMessage(),
+						ExceptionType.IOException, t);
+			}
+		}
+
+		public String getName() {
+			return "shell_cmd";
+		}
+
+		public Integer[] numArgs() {
+			return new Integer[]{1};
+		}
+
+		public String docs() {
+			return "string {command} Excecutes a command as if it was typed into a terminal."
+					+ " I suspect this is very dangerous.";
 		}
 	}
 	
