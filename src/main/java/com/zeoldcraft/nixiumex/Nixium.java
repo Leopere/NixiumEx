@@ -12,9 +12,9 @@ import org.bukkit.FireworkEffect;
 import org.bukkit.event.Listener;
 
 import com.laytonsmith.PureUtilities.CommandExecutor;
-import com.laytonsmith.PureUtilities.FileUtility;
-import com.laytonsmith.PureUtilities.StringUtils;
 import com.laytonsmith.PureUtilities.Version;
+import com.laytonsmith.PureUtilities.Common.FileUtil;
+import com.laytonsmith.PureUtilities.Common.StringUtils;
 import com.laytonsmith.abstraction.MCColor;
 import com.laytonsmith.abstraction.MCCommandSender;
 import com.laytonsmith.abstraction.MCLocation;
@@ -391,14 +391,14 @@ public class Nixium implements Listener {
 
 		public Construct exec(Target t, Environment environment, Construct... args) throws ConfigRuntimeException {
 			String location = args[0].val();
-			int mode = FileUtility.OVERWRITE;
+			int mode = FileUtil.OVERWRITE;
 			boolean fixed = false;
 			if (args.length >= 3) {
 				fixed = Static.getBoolean(args[2]);
 			}
 			if (args.length == 4) {
 				if (Static.getBoolean(args[3])) {
-					mode = FileUtility.APPEND;
+					mode = FileUtil.APPEND;
 				}
 			}
 			File file = fixed ? new File(location) : new File(t.file().getParentFile(), location);
@@ -408,7 +408,7 @@ public class Nixium implements Listener {
 					Exceptions.ExceptionType.SecurityException, t);
 			}
 			try{
-				FileUtility.write(args[1].val(), file, mode, true);
+				FileUtil.write(args[1].val(), file, mode, true);
 			}catch (Exception e){//Catch exception if any
 				throw new ConfigRuntimeException("Could not write to the file.", ExceptionType.IOException, t);
 			}
